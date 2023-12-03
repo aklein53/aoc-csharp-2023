@@ -60,6 +60,54 @@ public class Day03 : BaseDay
 
     public override ValueTask<string> Solve_2()
     {
-        throw new NotImplementedException();
+        List<int> gearRatioList = new();
+        for (int row = 0; row < _input.Count; row++)
+        {
+            for (int col = 0; col < _input[row].Length; col++)
+            {
+                if (_input[row][col] == '*')
+                {
+                    var gearRatio = getGearRatio(row, col);
+                    if (gearRatio.HasValue)
+                        gearRatioList.Add(gearRatio.Value);
+                }
+            }
+        }
+
+        return new(gearRatioList.Sum().ToString());
+    }
+
+    private int? getGearRatio(int targetRow, int targetCol)
+    {
+        List<string> possiblePartNumbers = new();
+        Regex regex = new Regex("\\d+");
+        for (int row = Math.Max(0, targetRow-1); row <= Math.Min(_input.Count - 1, targetRow + 1); row++)
+        {
+            var matches = regex.Matches(_input[row]);
+            for (int i=0; i < matches.Count; i++)
+            {
+                var match = matches[i];
+                if (checkIsAdjacent(targetCol, match))
+                {
+                    possiblePartNumbers.Add(match.Value);
+                }
+            }
+        }
+
+        if (possiblePartNumbers.Count == 2)
+        {
+            Console.WriteLine($"Found gear at {targetRow}, {targetCol} with ratio {possiblePartNumbers[0]}:{possiblePartNumbers[1]}");
+            return Convert.ToInt32(possiblePartNumbers[0]) * Convert.ToInt32(possiblePartNumbers[1]);
+        }
+
+        return null;
+    }
+
+    private bool checkIsAdjacent(int targetCol, Match match)
+    {
+        var lowestPossibleIndex = match.Index - 1;
+        var highestPossibleIndex = match.Index + match.Length;
+
+        return targetCol >= lowestPossibleIndex && targetCol <= highestPossibleIndex;
     }
 }
