@@ -62,12 +62,10 @@ public class Day02 : BaseDay
     public override ValueTask<string> Solve_2()
     {
         List<int> powers = new();
-        bool currentlyValid = true;
         foreach(var line in _input.Split("\r\n"))
         {
             var gameNum = Convert.ToInt32(line.Split(":")[0].Split(" ")[1]);
             var gameData = line.Split(":")[1];
-            currentlyValid = true;
             int minRed = 0, minGreen = 0, minBlue = 0;
 
             Console.WriteLine($"Processing game {gameNum}");

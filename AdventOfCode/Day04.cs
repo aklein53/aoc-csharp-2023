@@ -17,14 +17,11 @@ public class Day04 : BaseDay
         var total = 0;
         foreach(var line in _input)
         {
-            Console.WriteLine($"Line {count}");
             var usefulPart = line.Split(":")[1];
             var winningNumbers = usefulPart.Split("|")[0].Trim().Split(" ").Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => Convert.ToInt32(x)).ToHashSet();
             var numbersWeHave = usefulPart.Split("|")[1].Trim().Split(" ").Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => Convert.ToInt32(x)).ToList();
 
             var cardTotal = 0;
-            Console.WriteLine($"Winning numbers: {String.Join(",", winningNumbers)}");
-            Console.WriteLine($"We have: {String.Join(",", numbersWeHave)}");
             foreach (var numberWeHave in numbersWeHave)
             {
                 if (winningNumbers.Contains(numberWeHave))
@@ -54,18 +51,12 @@ public class Day04 : BaseDay
 
         for (int i = 0; i < totalCardsAvailable; i++)
         {
-            Console.WriteLine($"Card {i+1} has {numMatches[i]} matches");
             for (int j = i + 1; j <= i + numMatches[i]; j++)
             {
-                Console.WriteLine($"Get {copies[i]} copies of card {j + 1}");
                 copies[j] += copies[i];
             }
         }
 
-        for (int i = 0; i < totalCardsAvailable; i++)
-        {
-            Console.WriteLine($"{copies[i]} copies of card {i+1}");
-        }
         return new(copies.Sum().ToString());
     }
 
