@@ -48,20 +48,38 @@ public class Day07 : BaseDay
                 else cardCounts[card]++;
             }
             var numJokers = cardCounts.ContainsKey('J') ? cardCounts['J'] : 0;
-            if (cardCounts.Count == 1 || (cardCounts.Count == 2 && cardCounts.ContainsKey('J')))
+            cardCounts.Remove('J');
+            if (cardCounts.Count == 1)
                 HandType = HandType.FiveOfAKind;
-            else if (cardCounts.Any(x => x.Value == (4 - numJokers)))
+            else if (cardCounts.Any(x => x.Value == 4))
                 HandType = HandType.FourOfAKind;
-            else if ((cardCounts.Count == 2 && cardCounts.Any(x => x.Value == 3) && cardCounts.Any(x => x.Value == 2)) || (cardCounts.Count == 3 && numJokers > 0))
+            else if ((cardCounts.Count == 2 && cardCounts.Any(x => x.Value == 3) && cardCounts.Any(x => x.Value == 2)))
                 HandType = HandType.FullHouse;
-            else if (cardCounts.Any(x => x.Value + numJokers == 3))
+            else if (cardCounts.Any(x => x.Value == 3))
                 HandType = HandType.ThreeOfAKind;
-            else if ((cardCounts.Count(x => x.Value == 2) == 2) || (cardCounts.Count(x => x.Value == 2) == 1 && numJokers == 1))
+            else if ((cardCounts.Count(x => x.Value == 2) == 2))
                 HandType = HandType.TwoPair;
-            else if (cardCounts.Count(x => x.Value == 2) == 1 || numJokers == 1)
+            else if (cardCounts.Count(x => x.Value == 2) == 1)
                 HandType = HandType.OnePair;
             else
                 HandType = HandType.HighCard;
+
+            HandType = (HandType, numJokers) switch
+            {
+                (HandType.FourOfAKind, 1) => HandType.FiveOfAKind,
+                (HandType.ThreeOfAKind, 1) => HandType.FourOfAKind,
+                (HandType.ThreeOfAKind, 2) => HandType.FiveOfAKind,
+                (HandType.TwoPair, 1) => HandType.FullHouse,
+                (HandType.OnePair, 1) => HandType.ThreeOfAKind,
+                (HandType.OnePair, 2) => HandType.FourOfAKind,
+                (HandType.OnePair, 3) => HandType.FiveOfAKind,
+                (HandType.HighCard, 1) => HandType.OnePair,
+                (HandType.HighCard, 2) => HandType.ThreeOfAKind,
+                (HandType.HighCard, 3) => HandType.FourOfAKind,
+                (HandType.HighCard, 4) => HandType.FiveOfAKind,
+                (HandType.HighCard, 5) => HandType.FiveOfAKind,
+                _ => HandType
+            };
         }
 
         public int CompareTo(Hand other)
@@ -105,7 +123,7 @@ public class Day07 : BaseDay
             return new Hand(split[0].ToCharArray(), Convert.ToInt32(split[1]));
         }).OrderBy(x => x).ToList();
 
-        var handsWithJokers = hands.Where(x => !x.Cards.Contains('J')).ToList();
+        var handsWithJokers = hands.Where(x => x.Cards.Contains('J')).ToList();
         var totalWinnings = hands.Select((x, i) => x.Bid * ((long)i + 1)).Sum();
         return new(totalWinnings.ToString());
     }
