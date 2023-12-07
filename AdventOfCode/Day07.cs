@@ -22,7 +22,7 @@ public class Day07 : BaseDay
             ['A'] = 14,
             ['K'] = 13,
             ['Q'] = 12,
-            ['J'] = 11,
+            ['J'] = 1,
             ['T'] = 10,
             ['9'] = 9,
             ['8'] = 8,
@@ -36,7 +36,7 @@ public class Day07 : BaseDay
 
         public HandType HandType;
         public char[] Cards;
-        public int Bid;
+        public long Bid;
         public Hand(char[] cards, int bid)
         {
             Cards = cards;
@@ -47,18 +47,18 @@ public class Day07 : BaseDay
                 if (!cardCounts.ContainsKey(card)) cardCounts.Add(card, 1);
                 else cardCounts[card]++;
             }
-
-            if (cards.All(x => x == cards[0]))
+            var numJokers = cardCounts.ContainsKey('J') ? cardCounts['J'] : 0;
+            if (cardCounts.Count == 1 || (cardCounts.Count == 2 && cardCounts.ContainsKey('J')))
                 HandType = HandType.FiveOfAKind;
-            else if (cardCounts.Count == 2 && cardCounts.Any(x => x.Value == 4))
+            else if (cardCounts.Any(x => x.Value == (4 - numJokers)))
                 HandType = HandType.FourOfAKind;
-            else if (cardCounts.Count == 2 && cardCounts.Any(x => x.Value == 3) && cardCounts.Any(x => x.Value == 2))
+            else if ((cardCounts.Count == 2 && cardCounts.Any(x => x.Value == 3) && cardCounts.Any(x => x.Value == 2)) || (cardCounts.Count == 3 && numJokers > 0))
                 HandType = HandType.FullHouse;
-            else if (cardCounts.Any(x => x.Value == 3))
+            else if (cardCounts.Any(x => x.Value + numJokers == 3))
                 HandType = HandType.ThreeOfAKind;
-            else if (cardCounts.Count(x => x.Value == 2) == 2)
+            else if ((cardCounts.Count(x => x.Value == 2) == 2) || (cardCounts.Count(x => x.Value == 2) == 1 && numJokers == 1))
                 HandType = HandType.TwoPair;
-            else if (cardCounts.Count(x => x.Value == 2) == 1)
+            else if (cardCounts.Count(x => x.Value == 2) == 1 || numJokers == 1)
                 HandType = HandType.OnePair;
             else
                 HandType = HandType.HighCard;
@@ -105,7 +105,8 @@ public class Day07 : BaseDay
             return new Hand(split[0].ToCharArray(), Convert.ToInt32(split[1]));
         }).OrderBy(x => x).ToList();
 
-        var totalWinnings = hands.Select((x, i) => x.Bid * (i + 1)).Sum();
+        var handsWithJokers = hands.Where(x => !x.Cards.Contains('J')).ToList();
+        var totalWinnings = hands.Select((x, i) => x.Bid * ((long)i + 1)).Sum();
         return new(totalWinnings.ToString());
     }
     public override ValueTask<string> Solve_2()
