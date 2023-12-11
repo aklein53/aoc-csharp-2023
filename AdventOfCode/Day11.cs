@@ -11,13 +11,13 @@ public class Day11 : BaseDay
 
     public class Point{
 
-        public Point(int x, int y)
+        public Point(long x, long y)
         {
             X = x;
             Y = y;
         }
-        public int X { get; set; }
-        public int Y { get; set; }
+        public long X { get; set; }
+        public long Y { get; set; }
     }
 
     public override ValueTask<string> Solve_1()
@@ -34,61 +34,49 @@ public class Day11 : BaseDay
             }
         }
 
-        for (int row = 0; row < _input.Count; row++)
+        for (int row = _input.Count - 1; row >= 0 ; row--)
         {
             if (getRow(row).All(c => c == '.'))
             {
-                Console.WriteLine($"Expand row {row}");
                 incrementGalaxiesByRow(galaxies, row);
             }
         }
 
-        for (int col = 0; col < _input[0].Length; col++)
+        for (int col = _input[0].Length - 1; col >= 0 ; col--)
         {
             if (getColumn(col).All(c => c == '.'))
             {
-                Console.WriteLine($"Expand column {col}");
                 incrementGalaxiesByCol(galaxies, col); 
             }
         }
 
         long totalDistance = 0;
-        var galaxyNum = 1;
 
         while(galaxies.Count > 0)
         {
             var galaxy = galaxies.Dequeue();
-
-            var distances = galaxies.Select(g => manhattanDistance(galaxy, g));
-            var i = 1;
-            foreach(var distance in distances)
-            {
-                Console.WriteLine($"Galaxy {galaxyNum} to {galaxyNum + i++} distance: " + distance);
-            }
-
-            totalDistance += distances.Sum();
-            galaxyNum++;
+            totalDistance += galaxies.Select(g => manhattanDistance(galaxy, g)).Sum();
         }
 
         return new (totalDistance.ToString());
     }
 
-    private void incrementGalaxiesByRow(IEnumerable<Point> galaxies, int row)
+    private void incrementGalaxiesByRow(IEnumerable<Point> galaxies, int row, int increment = 1)
     {
         foreach (var galaxy in galaxies)
         {
-            if (galaxy.Y > row) galaxy.Y++;
+            if (galaxy.Y > row) galaxy.Y += increment;
         }
     }
 
-    private void incrementGalaxiesByCol(IEnumerable<Point> galaxies, int col)
+    private void incrementGalaxiesByCol(IEnumerable<Point> galaxies, int col, int increment = 1)
     {
         foreach (var galaxy in galaxies)
         {
-            if (galaxy.X > col) galaxy.X++;
+            if (galaxy.X > col) galaxy.X += increment;
         }
     }
-    private int manhattanDistance(Point p1, Point p2)
+    private long manhattanDistance(Point p1, Point p2)
     {
         return Math.Abs(p1.X - p2.X) + Math.Abs(p1.Y - p2.Y);
     }
@@ -106,6 +94,42 @@ public class Day11 : BaseDay
 
     public override ValueTask<string> Solve_2()
     {
-        return new ("");
+        Queue<Point> galaxies = new();
+        for (int row = 0; row < _input.Count; row++)
+        {
+            for (int col = 0; col < _input[0].Length; col++)
+            {
+                if (_input[row][col] == '#')
+                {
+                    galaxies.Enqueue(new Point(col, row));
+                }
+            }
+        }
+
+        for (int row = _input.Count - 1; row >= 0 ; row--)
+        {
+            if (getRow(row).All(c => c == '.'))
+            {
+                incrementGalaxiesByRow(galaxies, row, 999_999);
+            }
+        }
+
+        for (int col = _input[0].Length - 1; col >= 0 ; col--)
+        {
+            if (getColumn(col).All(c => c == '.'))
+            {
+                incrementGalaxiesByCol(galaxies, col, 999_999); 
+            }
+        }
+
+        long totalDistance = 0;
+
+        while(galaxies.Count > 0)
+        {
+            var galaxy = galaxies.Dequeue();
+            totalDistance += galaxies.Select(g => manhattanDistance(galaxy, g)).Sum();
+        }
+
+        return new (totalDistance.ToString());
     }
 }
