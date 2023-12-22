@@ -18,63 +18,50 @@ public class Day17 : BaseDay
 
     public override ValueTask<string> Solve_1()
     {
-        return new("102");
+        return new(solve().ToString());
     }
     
     public override ValueTask<string> Solve_2()
     {
         return new(solve(true).ToString());
     }
-
+    
     private int solve(bool isUltra = false)
     {
-        var lowestCost = new Dictionary<(int, int), int>();
+        var targetX = _input[0].Count - 1;
+        var targetY = _input.Count - 1;
+        
+        PriorityQueue<State, int> toProcess = new PriorityQueue<State, int>();
+        toProcess.Enqueue(new State(0,0, Orientation.Horizontal), 0);
+        toProcess.Enqueue(new State(0,0, Orientation.Vertical), 0);
 
-        var startStates = new List<State>
+        Dictionary<State, int> minCost = new();
+
+        while (toProcess.Count > 0)
         {
-            new State(0,0, Direction.Up, 0),
-            new State(0,0, Direction.Down, 0),
-            new State(0,0, Direction.Right, 0),
-            new State(0,0, Direction.Left, 0),
-        };
+            toProcess.TryDequeue(out State currState, out int currCost);
 
-        Dictionary<State, int> statesProcessed = new();
-        Queue<(State state, int cost)> statesToProcess = new();
-        startStates.ForEach(x => statesToProcess.Enqueue((x, 0)));
-        startStates.ForEach(x => lowestCost[(x.x, x.y)] = 0);
-
-        while (statesToProcess.Count > 0)
-        {
-            var (currentState, currentCost) = statesToProcess.Dequeue();
-
-            // If we've seen this state before
-            if (statesProcessed.ContainsKey(currentState))
+            if (currState.x == targetX && currState.y == targetY)
             {
-                // If the current cost is less than we've seen before for this state
-                if (currentCost < statesProcessed[currentState])
-                    statesProcessed[currentState] = currentCost;
-                else continue;
-            }
-            else
-            {
-                statesProcessed.Add(currentState, currentCost);
+                return currCost;
             }
             
-            var nextStates = getNextStates(currentState, isUltra).Where(x => !statesProcessed.ContainsKey(x) || statesProcessed[x] > currentCost + _input[x.y][x.x]);
+            var nextStates = getNextStates(currState, isUltra);
 
             foreach (var nextState in nextStates)
             {
-                if (!lowestCost.ContainsKey((nextState.x, nextState.y)))
-                    lowestCost[(nextState.x, nextState.y)] = int.MaxValue;
-                lowestCost[(nextState.x, nextState.y)] = Math.Min(
-                    lowestCost[(nextState.x, nextState.y)],
-                    currentCost + _input[nextState.y][nextState.x]);
-                statesToProcess.Enqueue((nextState, currentCost + _input[nextState.y][nextState.x]));
+                var nextCost = getCost((currState.x, currState.y), (nextState.x, nextState.y));
+
+                if (minCost.ContainsKey(nextState) && minCost[nextState] <= currCost + nextCost)
+                    continue;
+                
+                minCost[nextState] = currCost + nextCost;
+                
+                toProcess.Enqueue(nextState, currCost + nextCost);
             }
         }
 
-        var heatLoss = lowestCost[(_input.Count - 1, _input[0].Count - 1)];
-        return heatLoss;
+        throw new Exception("Couldn't find a path to the target");
     }
     private bool isInbounds(int x, int y)
     {
@@ -86,39 +73,58 @@ public class Day17 : BaseDay
         return isInbounds(state.x, state.y);
     }
 
+    private int getCost((int x, int y) start, (int x, int y) end)
+    {
+        if (start.x != end.x && start.y != end.y)
+            throw new Exception("Straight lines only");
+        int cost = 0;
+
+        if (start.y == end.y)
+        {
+            int currX = start.x;
+            while (currX != end.x)
+            {
+                currX = currX < end.x ? currX + 1 : currX - 1;
+                cost += getCost(currX, start.y);
+            }
+        }
+        else if (start.x == end.x)
+        {
+            int currY = start.y;
+            while (currY != end.y)
+            {
+                currY = currY < end.y ? currY + 1 : currY - 1;
+                cost += getCost(start.x, currY);
+            }
+        }
+
+        return cost;
+    }
+    
+    private int getCost(int x, int y)
+    {
+        return _input[y][x];
+    }
+
+    private Func<int, State, State>[] newStateFuncs = {
+        (inc, state) => state with { x = state.x + inc, orientation = Orientation.Horizontal},
+        (inc, state) => state with { y = state.y + inc, orientation = Orientation.Vertical},
+    };
+    
     private List<State> getNextStates(State state, bool isUltra = false)
     {
         List<State> nextStates = new List<State>();
+        
+        Func<int, State, State> newStateFunc = newStateFuncs[(int)state.orientation];
 
-        if ((!isUltra && state.speed < 3) || (isUltra && (state.speed < 10))) // Add forward states
-        {
-            var forwardState = state.direction switch
-            {
-                Direction.Up => state with { y = state.y - 1, speed = state.speed + 1 },
-                Direction.Down => state with { y = state.y + 1, speed = state.speed + 1 },
-                Direction.Left => state with { x = state.x - 1, speed = state.speed + 1 },
-                Direction.Right => state with { x = state.x + 1, speed = state.speed + 1 },
-            };
-            nextStates.Add(forwardState);
-        }
+        var minSteps = isUltra ? 4 : 1;
+        var maxSteps = isUltra ? 10 : 3;
 
-        if ((!isUltra) || (isUltra && state.speed >= 4))
+        for (int i = minSteps; i <= maxSteps; i++)
         {
-            // Add left and right states
-            var leftState = state.direction switch
-            {
-                Direction.Up => state with { x = state.x - 1, direction = Direction.Left, speed = 1 },
-                Direction.Down => state with { x = state.x + 1, direction = Direction.Right, speed = 1 },
-                Direction.Left => state with { y = state.y + 1, direction = Direction.Down, speed = 1 },
-                Direction.Right => state with { y = state.y - 1, direction = Direction.Up, speed = 1 },
-            };
-            var rightState = state.direction switch
-            {
-                Direction.Up => state with { x = state.x + 1, direction = Direction.Right, speed = 1 },
-                Direction.Down => state with { x = state.x - 1, direction = Direction.Left, speed = 1 },
-                Direction.Left => state with { y = state.y - 1, direction = Direction.Up, speed = 1 },
-                Direction.Right => state with { y = state.y + 1, direction = Direction.Down, speed = 1 },
-            };
+            var leftState = newStateFunc(-i, state);
+            var rightState = newStateFunc(i, state);
+            
             nextStates.Add(leftState);
             nextStates.Add(rightState);
         }
@@ -126,13 +132,11 @@ public class Day17 : BaseDay
         return nextStates.Where(isInbounds).ToList();
     }
 
-    enum Direction
+    enum Orientation
     {
-        Up,
-        Right,
-        Down,
-        Left
+        Vertical,
+        Horizontal
     }
 
-    record State(int x, int y, Direction direction, int speed);
+    record State(int x, int y, Orientation orientation);
 }
