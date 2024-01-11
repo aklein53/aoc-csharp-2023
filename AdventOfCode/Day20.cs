@@ -3,11 +3,11 @@ using System.Collections.Specialized;
 using System.Text;
 using System.Text.RegularExpressions;
 
-public class Day17 : BaseDay
+public class Day20 : BaseDay
 {
     private readonly List<List<int>> _input = new();
 
-    public Day17()
+    public Day20()
     {
         foreach (var line in File.ReadAllLines(InputFilePath))
         {

@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
-public class Day20 : BaseDay
+public class Day21 : BaseDay
 {
     private readonly List<string> _input = new();
 
-    public Day20()
+    public Day21()
     {
         _input = File.ReadAllLines(InputFilePath).ToList();
     }

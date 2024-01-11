@@ -1,186 +1,98 @@
-﻿using System.Collections.Concurrent;
-using System.Collections.Specialized;
-using System.Diagnostics;
-using System.Text;
-using System.Text.RegularExpressions;
-
-public class Day20 : BaseDay
+﻿public class Day23 : BaseDay
 {
     private readonly List<string> _input = new();
 
-    public Day20()
+    public Day23()
     {
         _input = File.ReadAllLines(InputFilePath).ToList();
     }
 
     public override ValueTask<string> Solve_1()
     {
-        int lowPulses = 1000;
-        int highPulses = 0;
-        
-        Dictionary<string, Node> nodes = new();
-        OrderedDictionary connections = new();
-        Queue<(Node sender, Node receiver, bool lowOrHigh)> pulseQueue = new();
-        
-        foreach (var line in _input)
-        {
-            // Handle new nodes
-            Node newNode = null;
-            string name = "broadcaster";
-            if (line[0] == '%') // flip-flop
-            {
-                name = line.Split(" -> ")[0].Replace("%", "");
-                newNode = new FlipFlop();
-            }
-            else if (line[0] == '&') // conjunction
-            {
-                name = line.Split(" -> ")[0].Replace("&", "");
-                newNode = new Conjunction();
-            }
-            else if (line.StartsWith("broadcaster")) // broadcaster
-            {
-                name = "broadcaster";
-                newNode = new Broadcaster();
-            }
-            else
-            {
-                name = line.Split(" -> ")[0].Trim();
-                newNode = new Node();
-            }
-            
-            newNode.Name = name;
-            nodes[name] = newNode;
-            connections[name] = new List<string>();
-            
-            // Handle connections
-            var connectedNodeNames = line.Split(" -> ")[1].Split(", ");
-            foreach (var connectedNodeName in connectedNodeNames)
-            {
-                (connections[name] as List<string>).Add(connectedNodeName);
-            }
-            
-            newNode.SendPulse = (sender, lowOrHigh) =>
-            {
-                //Console.WriteLine($"High: {highPulses}, Low: {lowPulses}");
-                
-                var connectedNodeNames = (List<string>)connections[sender.Name];
-
-                foreach (var connectedNodeName in connectedNodeNames)
-                {
-                    if (nodes.TryGetValue(connectedNodeName, out var node))
-                    {
-                        pulseQueue.Enqueue((sender, node, lowOrHigh));
-                    }
-                }
-            };
-        }
-
-        foreach (var key in connections.Keys)
-        {
-            var connectionList = (List<string>)connections[key];
-
-            foreach (var connectionName in connectionList)
-            {
-                if (!nodes.ContainsKey(connectionName))
-                    nodes[connectionName] = new Node() { Name = connectionName };
-                
-                nodes[connectionName].ConnectInput(nodes[(string)key]);
-            }
-        }
-        
-        var broadcastNode = nodes["broadcaster"];
-        while(true)
-        {
-            broadcastNode.ReceivePulse(null, false);
-
-            while (pulseQueue.Count > 0)
-            {
-                var (sender, receiver, lowOrHigh) = pulseQueue.Dequeue();
-                //Console.WriteLine($"{sender.Name} -> {receiver.Name} ({lowOrHigh})");
-                receiver.ReceivePulse(sender, lowOrHigh);
-                if (lowOrHigh)
-                    highPulses++;
-                else
-                    lowPulses++;
-            }
-        }
-        
-        return new((lowPulses * highPulses).ToString());
+        return new(solve().ToString());
     }
     
     public override ValueTask<string> Solve_2()
     {
-        return new("");
-    }
-    private int solve()
-    {
-        return 0;
-    }
-
-    class Node
-    {
-        public string Name;
-        public List<Node> Inputs = new();
-        public List<Node> Outputs = new();
-        public Action<Node, bool> SendPulse = (sender, lowOrHigh) => { };
-
-        public virtual void ConnectInput(Node newInput)
-        {
-            Inputs.Add(newInput);
-        }
-
-        public virtual void ConnectOutput(Node newOutput)
-        {
-            Outputs.Add(newOutput);
-        }
-
-        public virtual void ReceivePulse(Node sender, bool lowOrHigh)
-        {
-            if (!lowOrHigh && this.Name == "rx")
-                Debugger.Break();
-        }
-    }
-
-    class FlipFlop : Node
-    {
-        public bool State = false;
-
-        public override void ReceivePulse(Node sender, bool lowOrHigh)
-        {
-            if (lowOrHigh)
-                return;
-            
-            State = !State;
-            SendPulse(this, State);
-        }
+        return new(solve(true).ToString());
     }
     
-    class Broadcaster : Node
+    private int solve(bool climbSlopes = false)
     {
-        public override void ReceivePulse(Node sender, bool lowOrHigh)
+        // Work backward from end tile
+        var endPoint = new Point(_input.Last().IndexOf('.'), _input.Count - 1, new List<Point>());
+        var startPoint = new Point(_input.First().IndexOf('.'), 0, new List<Point>());
+        
+        List<Point> nextPoints = new() { endPoint };
+        int stepCount = -1;
+        int lengthOfLongest = 0;
+        while (nextPoints.Count > 0)
         {
-            SendPulse(this, lowOrHigh);
+            nextPoints = nextPoints.SelectMany(x=> getNextPoints(x, climbSlopes)).ToList();
+            if (nextPoints.Any(x => x.x == startPoint.x && x.y == startPoint.y))
+                lengthOfLongest = Math.Max(lengthOfLongest, stepCount + 2);
+            stepCount++;
         }
+
+        return lengthOfLongest;
     }
 
-    class Conjunction : Node
+    private List<Point> getNextPoints(Point currPoint, bool climbSlopes = false)
     {
-        Dictionary<Node, bool> lastReceived = new();
-
-        public override void ReceivePulse(Node sender, bool lowOrHigh)
+        List<Point> nextPoints = new List<Point>
         {
-            lastReceived[sender] = lowOrHigh;
+            currPoint with { x = currPoint.x - 1, prevPoints = new()},
+            currPoint with { x = currPoint.x + 1, prevPoints = new()},
+            currPoint with { y = currPoint.y - 1, prevPoints = new()},
+            currPoint with { y = currPoint.y + 1, prevPoints = new()},
+        };
 
-            if (lastReceived.Values.All(x => x))
-                SendPulse(this, false);
-            else
-                SendPulse(this, true);
+        foreach (var point in nextPoints)
+        {
+            point.prevPoints.AddRange(currPoint.prevPoints);
+            point.prevPoints.Add(currPoint);
         }
 
-        public override void ConnectInput(Node newInput)
-        {
-            lastReceived.Add(newInput, false);
-            base.ConnectInput(newInput);
-        }
+        return nextPoints.Where(x => isValidNextPoint(x, currPoint, climbSlopes)).ToList();
     }
+    
+    private bool isValidNextPoint(Point nextPoint, Point currPoint, bool climbSlopes = false)
+    {
+        // No going backwards
+        if (nextPoint.prevPoints.Any(prevPoint => prevPoint.x == nextPoint.x && prevPoint.y == nextPoint.y)) return false;
+        
+        // No going out of bounds
+        if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= _input[0].Length || nextPoint.y >= _input.Count)
+            return false;
+
+        // Stay on the trail
+        if (_input[nextPoint.y][nextPoint.x] == '#') return false;
+        
+        // Only go up slopes
+        var charAtNextPoint = charAt(nextPoint);
+
+        if (!climbSlopes)
+        {
+            if (nextPoint.y < currPoint.y && !(charAtNextPoint is 'v' or '.')) return false;
+            if (nextPoint.y > currPoint.y && !(charAtNextPoint is '^' or '.')) return false;
+            if (nextPoint.x < currPoint.x && !(charAtNextPoint is '>' or '.')) return false;
+            if (nextPoint.x > currPoint.x && !(charAtNextPoint is '<' or '.')) return false;
+        }
+        else
+        {
+            if (nextPoint.y < currPoint.y && !(charAtNextPoint is 'v' or '^' or '.')) return false;
+            if (nextPoint.y > currPoint.y && !(charAtNextPoint is '^' or 'v'or '.')) return false;
+            if (nextPoint.x < currPoint.x && !(charAtNextPoint is '>' or '<'or '.')) return false;
+            if (nextPoint.x > currPoint.x && !(charAtNextPoint is '<' or '>'or '.')) return false;
+        }
+
+        return true;
+    }
+
+    private char charAt(Point point)
+    {
+        return _input[point.y][point.x];
+    }
+
+    record Point(int x, int y, List<Point> prevPoints);
 }

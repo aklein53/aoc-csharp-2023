@@ -5,8 +5,13 @@ public class Day12 : BaseDay
 {
     public class ConditionRecord
     {
-        public char[] Springs { get; set; }
+        public string Springs { get; set; }
         public List<int> GroupCounts { get; set; }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Springs.GetHashCode(), string.Join(',', GroupCounts).GetHashCode());
+        }
     }
 
     private readonly List<string> _input;
@@ -20,7 +25,7 @@ public class Day12 : BaseDay
         {
             ConditionRecord cr = new();
             var split = line.Split(' ');
-            cr.Springs = duplicate(split[0],5,'?').ToCharArray();
+            cr.Springs = duplicate(split[0],5,'?');
             cr.GroupCounts = duplicate(split[1],5,',').Split(',').Select(x => Convert.ToInt32(x)).ToList();
             conditionRecords.Add(cr);
         }
@@ -65,13 +70,13 @@ public class Day12 : BaseDay
         return new(counts.Sum().ToString());
     }
 
-    private int getValidComboCount(char[] springs, List<int> mysteryIndices, List<int> expectedGroupCounts)
+    private int getValidComboCount(string springs, List<int> mysteryIndices, List<int> expectedGroupCounts)
     {
         var count = 0;
         List<string> returnList = new();
         char[] workingSprings = new char[springs.Length];
-        springs.CopyTo(workingSprings, 0);
-
+        springs.ToCharArray().CopyTo(workingSprings, 0);
+        
         var maxCombos = (int)Math.Pow(2, mysteryIndices.Count);
 
         for (int comboNum = 0; comboNum < maxCombos; comboNum++)
@@ -82,24 +87,18 @@ public class Day12 : BaseDay
                 workingSprings[mysteryIndices[i]] = newChar == 1 ? '.' : '#';
             }
 
-            if (isValid2(workingSprings, expectedGroupCounts))
+            if (isValid2(new ConditionRecord() {Springs = new string(workingSprings), GroupCounts = expectedGroupCounts}))
                 count++;
         }
 
         return count;
     }
 
-    private bool isValid(char[] springs, List<int> expectedGroupCounts)
+    private bool isValid2(ConditionRecord cr)
     {
-        var springString = new string(springs);
-        var groups = groupRegex.Matches(springString).Select(x => x.Value).ToList();
-        var actualGroupCounts = groups.Select(x => x.Length).ToList();
-        return expectedGroupCounts.Count == actualGroupCounts.Count &&
-            expectedGroupCounts.Zip(actualGroupCounts, (a, b) => a == b).All(x => x);
-    }
-
-    private bool isValid2(char[] springs, List<int> expectedGroupCounts)
-    {
+        var springs = cr.Springs;
+        var expectedGroupCounts = cr.GroupCounts;
+        
         List<int> actualGroupCounts = new();
         bool inGroup = false;
         int groupCount = 0;
@@ -133,5 +132,33 @@ public class Day12 : BaseDay
     public override ValueTask<string> Solve_2()
     {
         return new("");
+    }
+
+    private Dictionary<ConditionRecord, long> solutionMemo = new();
+    private long CountSolutions(ConditionRecord conditionRecord)
+    {
+        if (solutionMemo.TryGetValue(conditionRecord, out var answer))
+            return answer;
+
+        if (conditionRecord.Springs.All(x => x != '?'))
+        {
+            if (isValid2(conditionRecord))
+            {
+                solutionMemo[conditionRecord] = 1;
+                return 1;
+            }
+            else
+            {
+                solutionMemo[conditionRecord] = 0;
+                return 0;
+            }
+        }
+
+        var springs = conditionRecord.Springs;
+        var expectedGroupCounts = conditionRecord.GroupCounts;
+
+
+
+        return 0;
     }
 }
